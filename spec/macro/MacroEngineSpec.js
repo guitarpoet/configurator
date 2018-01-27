@@ -42,10 +42,10 @@ const complexDefineString = `#if global.DEBUG
 #define NO_DEBUG
 #undefine MY_DEBUG
 #endif
-#ifdef process.env.MY_DEBUG
+#ifenv MY_DEBUG
 DEBUG
 #endif
-#ifdef process.env.NO_DEBUG
+#ifenv NO_DEBUG
 NO DEBUG
 #endif`;
 

@@ -18,6 +18,7 @@ const IF_STATE = "if";
 const ELSE_STATE = "else";
 const IF_PATTERN = /^(\\s)*#if (.+)$/;
 const IF_DEF_PATTERN = /^(\\s)*#ifdef (.+)$/;
+const IF_ENV_PATTERN = /^(\\s)*#ifenv (.+)$/;
 const ELSE_PATTERN = /^(\\s)*#else$/;
 const END_IF_PATTERN = /^(\\s)*#endif$/;
 const DEFINE_PATTERN = /^(\\s)*#define ([a-z\\.A-Z_]+)( (.+))?/;
@@ -158,6 +159,12 @@ class IfDefBlock extends IfBlock {
     }
 }
 
+class IfEnvBlock extends IfBlock {
+    constructor(variable) {
+        super(`typeof process.env.${variable} !== "undefined"`);
+    }
+}
+
 class DefineFilter extends TextFilterBase {
     constructor(name) {
         super(name);
@@ -265,6 +272,24 @@ class CoreFilter extends TextFilterBase {
                 continue;
             }
 
+            m = t.match(IF_ENV_PATTERN);
+            if(m) {
+                let block = new IfEnvBlock(m[2]);
+
+                if(currentBlock) {
+                    // Push the old block into the stack first
+                    stack.push(currentBlock);
+
+                    // Then add the block into the current block
+                    currentBlock.add(block);
+                }
+
+                // Update the current block using the new one
+                currentBlock = block;
+
+                // Then move to next line
+                continue;
+            }
 
             if(t.match(ELSE_PATTERN)) {
                 // This is an else line, let's update the current block
