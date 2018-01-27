@@ -16,13 +16,13 @@ const { FilterObject } = FilterBase;
  */
 const IF_STATE = "if";
 const ELSE_STATE = "else";
-const IF_PATTERN = /^(\\s)*#if (.+)$/;
-const IF_DEF_PATTERN = /^(\\s)*#ifdef (.+)$/;
-const IF_ENV_PATTERN = /^(\\s)*#ifenv (.+)$/;
-const ELSE_PATTERN = /^(\\s)*#else$/;
-const END_IF_PATTERN = /^(\\s)*#endif$/;
-const DEFINE_PATTERN = /^(\\s)*#define ([a-z\\.A-Z_]+)( (.+))?/;
-const UNDEFINE_PATTERN = /^(\\s)*#undefine ([a-z\\.A-Z_]+)/;
+const IF_PATTERN = /^([ \t])*#if (.+)$/;
+const IF_DEF_PATTERN = /^([ \t])*#ifdef (.+)$/;
+const IF_ENV_PATTERN = /^([ \t])*#ifenv (.+)$/;
+const ELSE_PATTERN = /^([ \t])*#else$/;
+const END_IF_PATTERN = /^([ \t])*#endif$/;
+const DEFINE_PATTERN = /^([ \t])*#define ([a-z\\.A-Z_]+)( (.+))?/;
+const UNDEFINE_PATTERN = /^([ \t])*#undefine ([a-z\\.A-Z_]+)/;
 
 class TextFilterBase extends FilterObject {
     constructor(name) {

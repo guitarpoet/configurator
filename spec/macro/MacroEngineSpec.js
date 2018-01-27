@@ -12,21 +12,21 @@ World
 #endif`;
 
 const complexString = `#if global.DEBUG
-#if global.ANOTHER_INT > 20
+    #if global.ANOTHER_INT > 20
 DEBUG 20
-#else
+    #else
 DEBUG 0
-#endif
+    #endif
 #else
 NO DEBUG
 #endif`;
 
 const complexStringWithIfDef = `#if global.DEBUG
-#ifdef global.TEST
+    #ifdef global.TEST
 TEST
-#else
+    #else
 NOT TEST
-#endif
+    #endif
 #else
 NO DEBUG
 #endif`;
@@ -34,13 +34,12 @@ NO DEBUG
 const simpleDefineString = `
 #define TEST 1
 `
-
 const complexDefineString = `#if global.DEBUG
-#define MY_DEBUG
-#undefine NO_DEBUG
+    #define MY_DEBUG
+    #undefine NO_DEBUG
 #else
-#define NO_DEBUG
-#undefine MY_DEBUG
+    #define NO_DEBUG
+    #undefine MY_DEBUG
 #endif
 #ifenv MY_DEBUG
 DEBUG
