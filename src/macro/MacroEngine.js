@@ -10,6 +10,8 @@
 const FilterBase = require("../models/FilterBase");
 const { flatten, isString, isArray } = require("lodash");
 const { FilterObject } = FilterBase;
+const fs = require("fs");
+const path = require("path");
 
 /**
  * The const values
@@ -23,6 +25,7 @@ const ELSE_PATTERN = /^([ \t])*#else$/;
 const END_IF_PATTERN = /^([ \t])*#endif$/;
 const DEFINE_PATTERN = /^([ \t])*#define ([a-z\\.A-Z_]+)( (.+))?/;
 const UNDEFINE_PATTERN = /^([ \t])*#undefine ([a-z\\.A-Z_]+)/;
+const INCLUDE_PATTERN = /^([ \t])*#include ([a-zA-Z0-9\\._\/]+)/;
 
 class TextFilterBase extends FilterObject {
     constructor(name) {
@@ -214,6 +217,39 @@ const handleDefine = (t) => {
     return t;
 }
 
+class IncludeFilter extends TextFilterBase {
+    constructor(name, resolver = null) {
+        super(name);
+        this.resolver = resolver;
+    }
+
+    filter(text = []) {
+        let ret = [];
+        for(let t of text) {
+            let m = t.match(INCLUDE_PATTERN);
+            if(m) {
+                // This is a file include, let's get the file
+                let name = m[2];
+                if(this.resolver) {
+                    name = this.resolver(name);
+                } else {
+                    name = path.resolve(name);
+                }
+                if(fs.existsSync(name)) {
+                    let content = fs.readFileSync(name, "utf-8");
+                    // TODO: Maybe filter out the blank lines is not a good idea?
+                    ret = ret.concat(content.split("\n").filter(i=>!!i));
+                } else {
+                    throw new Error(`Can't find file for name ${m[2]}`);
+                }
+            } else {
+                ret.push(t);
+            }
+        }
+        return ret;
+    }
+}
+
 /**
  * The filter will support the #if and #else, and since ifdef will need define
  * and undefine, so, the define patterns will be handle in this filter too
@@ -378,9 +414,11 @@ class MacroEngine extends FilterBase {
 MacroEngine.TextFilterBase = TextFilterBase;
 MacroEngine.CoreFilter = CoreFilter;
 
-MacroEngine.basicFilters = [
+MacroEngine.basicFilters = (resolver = null) => ([
+    new IncludeFilter("include-filter", resolver),
     new CoreFilter("core-filter")
-];
-MacroEngine.basic = new MacroEngine(MacroEngine.basicFilters);
+])
+
+MacroEngine.basic = (resolver) => new MacroEngine(MacroEngine.basicFilters(resolver));
 
 module.exports = MacroEngine

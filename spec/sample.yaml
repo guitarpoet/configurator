@@ -1,0 +1,122 @@
+################################################################################
+#
+# The Aliases Part
+#
+################################################################################
+
+#
+# This is the configuration for the dashboard, we even support the macro format
+# so that we can test and add more information into it to let it support debug
+#
+
+aliases: # The aliases will start with a ~, and it will be replaced by the value
+    react-component: ^config/react/attributes/component # The JavaScript path indicator will be started with a ^, it will create the objects according to this path
+    routes-config: ^config/routes
+
+################################################################################
+#
+# The Template Part
+#
+################################################################################
+
+templates:
+    filter-template: &filter-template # The template for the filters
+        type: module
+        module: core/filters
+
+    api-template: &api-template # The template for the API routes
+        type: module
+        module: routing/api
+        config:
+            method: all # Support get, post and all
+            #ifdef DEV
+            hot-load: true
+            #endif
+    login-based-api-template: # The Template for all API routes that needs login
+        based-on: *api-route
+        config:
+            filters:
+                -
+                    based-on: *filter-template
+                    name: attachToken
+        
+    dashboard-route: &dashboard-route
+        type: # The dashboard's type,
+            - dynamic # Dynamic page is just a page, will using the render engine to render the page(with the configuration), and filters
+            - react
+        config: # This is the element to config the routing of this path, it can be just a plain object, or a hash of plain objects, depends on the type, if the type is an array, then this config will be a hash of the objects, and the key name will be the type, and if the type is a string, then this should be a plain object
+            dynamic: # The configuration for the dynamic type
+                page: default.ejs # The default dynamic page
+                js:
+                    - main.js
+                    #ifdef DEV
+                    - webpack_hot.js 
+                    #else
+                    - share.js
+                    - vendor.js
+                css:
+                    - css/share.css
+                    #endif
+            react: # The configuration for the react type
+                component:
+                    type: Route
+                    module: react-router-dom
+                attributes:
+                    requireAuth: true
+                    exact: true
+                    component:
+                        type: module
+
+
+################################################################################
+#
+# The Routes Part
+#
+################################################################################
+
+routes: # This is the root for all the routes
+    /:
+        type: redirect # The redirect type is different with alias type, alias means it will use the same routing of that route, the redirect means it will redirect to that route anyway
+        config:
+            to: /dashboard
+
+    /api:
+        type: express # This express type of routing will provide a router object to handle the routing
+        ~routes-config:
+            /config:
+                based-on: *api-template
+                config:
+                    name: config
+            /3/user/session: # This is the configuration for the user session api operation, it, for templates, it will not support update if the value for the key is not primitive, only merge the hash and the arrays, and the new one always appears at the bottom
+                based-on: *login-based-api-template
+                config:
+                    name: user_session
+                    filters:
+                        - 
+                            based-on: *filter-template
+                            name: middlewareProxy
+                        - 
+                            based-on: *filter-template
+                            name: loadMenu
+            /2/user/logout: 
+                based-on: *login-based-api-template
+                config:
+                    name: user_logout
+
+    /dashboard: # This is the name for the routing, mostly it can be like this, or have some variables in it, like this /user/:username, this will not affect any of the configuraiton, it is only used by the code using it
+        based-on: *dashboard-route
+        ~react-component:
+            module: dashboard/dashboard.component
+            name: DashboardPage
+
+    /hr/:itemId:
+        based-on: *dashboard-route
+        ~react-component:
+            module: dashboard/dashboard.component
+            name: HrNotificationsPage
+
+    /contact:
+        based-on: *dashboard-route
+        ~react-component:
+            module: components/employee/ContactPage
+            name: ContactPage

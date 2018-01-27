@@ -48,6 +48,7 @@ DEBUG
 NO DEBUG
 #endif`;
 
+const simpleIncludeString = `#include ../simple.yaml`;
 
 global.DEBUG = 1;
 global.ANOTHER_INT = 23;
@@ -55,53 +56,53 @@ global.ANOTHER_INT = 23;
 describe("MacroEngine", function() {
 	it("Simple Process Test", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
-        basic.process(simpleString).then(txt => expect(txt).toBe("World")).catch(fail);
+        basic(require.resolve).process(simpleString).then(txt => expect(txt).toBe("World")).catch(fail);
 	});
 
     it("Not Match Test", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
-        basic.process(notMatchString).then(() => fail("Didn't get error thrown!")).catch(e => expect(e).toBeTruthy());
+        basic(require.resolve).process(notMatchString).then(() => fail("Didn't get error thrown!")).catch(e => expect(e).toBeTruthy());
     });
 
     it("Complex Process Test", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
-        basic.process(complexString).then(txt => expect(txt).toBe("DEBUG 20")).catch(fail);
+        basic(require.resolve).process(complexString).then(txt => expect(txt).toBe("DEBUG 20")).catch(fail);
     });
 
     it("Complex Process Test For Branch", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.ANOTHER_INT = 1;
-        basic.process(complexString).then(txt => expect(txt).toBe("DEBUG 0")).catch(fail);
+        basic(require.resolve).process(complexString).then(txt => expect(txt).toBe("DEBUG 0")).catch(fail);
     });
 
     it("Complex Process Test For If Defined", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 1;
-        basic.process(complexStringWithIfDef).then(txt => expect(txt).toBe("NOT TEST")).catch(fail);
+        basic(require.resolve).process(complexStringWithIfDef).then(txt => expect(txt).toBe("NOT TEST")).catch(fail);
     });
 
     it("Complex Process Test For If Defined 2", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 1;
         global.TEST = 1;
-        basic.process(complexStringWithIfDef).then(txt => expect(txt).toBe("TEST")).catch(fail);
+        basic(require.resolve).process(complexStringWithIfDef).then(txt => expect(txt).toBe("TEST")).catch(fail);
     });
 
     it("Complex Process Test For Global Branch", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 0;
-        basic.process(complexString).then(txt => expect(txt).toBe("NO DEBUG")).catch(fail);
+        basic(require.resolve).process(complexString).then(txt => expect(txt).toBe("NO DEBUG")).catch(fail);
     });
 
     it("Define Test", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
-        basic.process(simpleDefineString).then(() => expect(process.env.TEST).toBe("1")).catch(fail);
+        basic(require.resolve).process(simpleDefineString).then(() => expect(process.env.TEST).toBe("1")).catch(fail);
     });
 
     it("Define Complex Test 1", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 0;
-        basic.process(complexDefineString).then(txt => {
+        basic(require.resolve).process(complexDefineString).then(txt => {
             expect(process.env.MY_DEBUG).toBeFalsy();
             expect(txt).toBe("NO DEBUG");
         }).catch(fail);
@@ -110,9 +111,14 @@ describe("MacroEngine", function() {
     it("Define Complex Test 1", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 1;
-        basic.process(complexDefineString).then(txt => {
+        basic(require.resolve).process(complexDefineString).then(txt => {
             expect(process.env.MY_DEBUG).toBeTruthy();
             expect(txt).toBe("DEBUG");
         }).catch(fail);
+    });
+
+    it("Include Test", function() {
+		let { Configurator: { MacroEngine: { basic } } } = this;
+        basic(require.resolve).process(simpleIncludeString).then(txt => expect(txt).toBe("hello: world")).catch(fail);
     });
 })
