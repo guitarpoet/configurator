@@ -1,0 +1,7 @@
+MAKE_FILE_HEADER(The make file for configurator, Fri Jan 26 11:03:25 2018)
+
+MAKE_INIT
+
+MAKE_SECTION_HEADER(Tasks)
+
+MAKE_BODY
