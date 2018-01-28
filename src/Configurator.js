@@ -16,7 +16,8 @@ const fs = require("fs");
 const yaml = require("yamljs");
 const { isObject, isArray } = require("lodash");
 const { FilterObject } = FilterBase;
-const ALIAS_PATTERN = /^\~([a-zA-Z_-]+)/;
+const ALIAS_PATTERN = /^\~([a-zA-Z_\-]+)/;
+const COMPOSITE_PATTERN = /^\^([a-zA-Z_\-\/]+)/;
 
 /**
  * The filter that will load the file as the output
@@ -104,6 +105,73 @@ class AliasFilter extends FilterObject {
     }
 }
 
+const processComposites = (data) => {
+    if(isObject(data)) {
+        // Data is object, let's process it
+        for(let p in data) {
+            let v = data[p];
+            let m = p.match(COMPOSITE_PATTERN);
+            if(m) {
+                // p is an composite, let's process it
+                let name = m[1];
+                if(name) {
+                    name = name.split("/");
+                    // Let's remove the old key
+                    delete data[p];
+
+                    let obj = v;
+                    v = {};
+                    while(name.length > 1) {
+                        let n = name.pop();
+                        v[n] = obj;
+                        obj = v;
+                        v = {};
+                    }
+                    
+                    data[name[0]] = obj;
+                }
+            }
+            if(isObject(v) || isArray(v)) {
+                // Let's process the alias in the inner object or array
+                processComposites(v);
+            }
+        }
+    }
+
+    if(isArray(data)) {
+        for(let d of data) {
+            if(isObject(d) || isArray(d)) {
+                processComposites(d);
+            }
+        }
+    }
+}
+
+class CompositeFilter extends FilterObject {
+    constructor(name = "composite-filter") {
+        super(name);
+    }
+
+    filter(data) {
+        // Let's process the composites
+        processComposites(data);
+        return data;
+    }
+}
+
+/**
+ * This is filter will construct the result into JSON
+ */
+class JsonFilter extends FilterObject {
+    constructor(name = "json-filter") {
+        super(name);
+    }
+
+    filter(data) {
+        return JSON.stringify(data);
+    }
+}
+
 class Configurator extends FilterBase {
     constructor(resolver = null, filters = []) {
         super(filters);
@@ -117,11 +185,22 @@ class Configurator extends FilterBase {
         // Let's add the aliases filter
         this.push(new AliasFilter());
 
+        // Let's add the composite filter
+        this.push(new CompositeFilter());
+
         // Use the resolver(which used to resolve the file path) from the constructor, if not set, will use path.resolve as default
         this.resolver = resolver || path.resolve;
 
         // Construct the basic macro engine
         this.macro = MacroEngine.basic(resolver);
+    }
+
+    /**
+     * This will add the json filter into the filter chain.
+     */
+    json() {
+        this.push(new JsonFilter());
+        return this;
     }
 
     getContents(name) {
