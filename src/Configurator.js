@@ -1,7 +1,7 @@
 /**
  *
  * This is the configurator which will support the macro based YAML configuration
- * 
+ *
  * It will use the Basic MacroEngine to process the YAML text first.
  *
  * @author Jack <jack@thinkingcloud.info>
@@ -14,8 +14,9 @@ const MacroEngine = require("./macro/MacroEngine");
 const FilterBase = require("./models/FilterBase");
 const fs = require("fs");
 const yaml = require("yamljs");
-
+const { isObject, isArray } = require("lodash");
 const { FilterObject } = FilterBase;
+const ALIAS_PATTERN = /^\~([a-zA-Z_-]+)/;
 
 /**
  * The filter that will load the file as the output
@@ -52,15 +53,69 @@ class YamlFilter extends FilterObject {
     }
 }
 
+const processAlias = (data, aliases = null) => {
+    if(aliases) {
+        // Only process it when there is aliases definitions
+        if(isObject(data)) {
+            // Data is object, let's process it
+            for(let p in data) {
+                let v = data[p];
+                let m = p.match(ALIAS_PATTERN);
+                if(m) {
+                    // p is an alias, let's process it
+                    let alias = aliases[m[1]];
+                    if(alias) {
+                        // We get the alias now, let's replace it as the key
+                        data[alias] = v;
+                        // Then let's remove the old key
+                        delete data[p];
+                    }
+                }
+                if(isObject(v) || isArray(v)) {
+                    // Let's process the alias in the inner object or array
+                    processAlias(v, aliases);
+                }
+            }
+        }
+
+        if(isArray(data)) {
+            for(let d of data) {
+                if(isObject(d) || isArray(d)) {
+                    // Let's process the alias in the inner object or array
+                    processAlias(d, aliases);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * This is the filter that will replace the alias to the aliased name
+ */
+class AliasFilter extends FilterObject {
+    constructor(name = "alias-filter") {
+        super(name);
+    }
+
+    filter(data) {
+        // Let's process the aliases
+        processAlias(data, data.aliases);
+        return data;
+    }
+}
+
 class Configurator extends FilterBase {
     constructor(resolver = null, filters = []) {
         super(filters);
         // Let's add the Yaml parse filter to parse the result to the JavaScript Object
-        this.unshift(new YamlFilter()); 
+        this.unshift(new YamlFilter());
         // Let's add the macro filter
-        this.unshift(new MacroFilter(this)); 
+        this.unshift(new MacroFilter(this));
         // Let's add the read file filter to the top most
-        this.unshift(new FileFilter(this)); 
+        this.unshift(new FileFilter(this));
+
+        // Let's add the aliases filter
+        this.push(new AliasFilter());
 
         // Use the resolver(which used to resolve the file path) from the constructor, if not set, will use path.resolve as default
         this.resolver = resolver || path.resolve;

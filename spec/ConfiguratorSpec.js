@@ -17,5 +17,8 @@ describe("Configurator", function() {
         process.env.DEV = true;
         let c = new Configurator(require.resolve);
         c.process("./sample.yaml").then(console.info).catch(console.error);
+
+        console.time("process");
+        c.process("./sample.yaml").then(() => console.timeEnd("process")).catch(console.error);
     });
 });
