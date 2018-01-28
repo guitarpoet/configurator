@@ -9,8 +9,9 @@
 
 const FilterBase = require("./models/FilterBase");
 const MacroEngine = require("./macro/MacroEngine");
+const Configurator = require("./Configurator");
 
-module.exports = {
-    FilterBase,
-    MacroEngine
-}
+Configurator.FilterBase = FilterBase;
+Configurator.MacroEngine = MacroEngine;
+
+module.exports = Configurator;

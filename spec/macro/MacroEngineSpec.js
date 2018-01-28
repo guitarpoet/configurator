@@ -21,6 +21,8 @@ DEBUG 0
 NO DEBUG
 #endif`;
 
+const simpleStringWithExpr = "#expr 1+1";
+
 const complexStringWithIfDef = `#if global.DEBUG
     #ifdef global.TEST
 TEST
@@ -92,6 +94,11 @@ describe("MacroEngine", function() {
 		let { Configurator: { MacroEngine: { basic } } } = this;
         global.DEBUG = 0;
         basic(require.resolve).process(complexString).then(txt => expect(txt).toBe("NO DEBUG")).catch(fail);
+    });
+
+    it("Expr Test", function() {
+		let { Configurator: { MacroEngine: { basic } } } = this;
+        basic(require.resolve).process(simpleStringWithExpr).then(txt => expect(txt).toBe("2")).catch(fail);
     });
 
     it("Define Test", function() {

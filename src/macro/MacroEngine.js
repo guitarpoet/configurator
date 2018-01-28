@@ -26,6 +26,9 @@ const END_IF_PATTERN = /^([ \t])*#endif$/;
 const DEFINE_PATTERN = /^([ \t])*#define ([a-z\\.A-Z_]+)( (.+))?/;
 const UNDEFINE_PATTERN = /^([ \t])*#undefine ([a-z\\.A-Z_]+)/;
 const INCLUDE_PATTERN = /^([ \t])*#include ([a-zA-Z0-9\\._\/]+)/;
+const EXPR_PATTERN = /^([ \t])*#expr (.+)$/;
+
+const evaluate = (expr) => (eval(`(${expr})`))
 
 class TextFilterBase extends FilterObject {
     constructor(name) {
@@ -59,7 +62,7 @@ class BreakLinesFilter extends FilterObject {
 }
 
 class JoinLinesFilter extends FilterObject {
-    constructor(seperator = " ") {
+    constructor(seperator = "\n") {
         super("join-lines-filter");
         this.seperator = seperator;
     }
@@ -115,6 +118,20 @@ class UndefineBlock extends Block {
     }
 }
 
+class ExprBlock extends Block {
+    constructor(expression) {
+        super();
+        this.expression = expression;
+    }
+
+    process() {
+        if(this.expression) {
+            // Let's evaluate the expression
+            return evaluate(this.expression);
+        }
+    }
+}
+
 class IfBlock extends Block {
     constructor(expression) {
         super();
@@ -129,7 +146,7 @@ class IfBlock extends Block {
     }
 
     expr() {
-        return eval(`(${this._expression})`);
+        return evaluate(this._expression);
     }
 
     process() {
@@ -202,6 +219,15 @@ const handleDefine = (t) => {
         // OK, let's set the value to the process.env only
         if(name) {
             return new DefineBlock(name, value);
+        }
+    }
+
+    m = t.match(EXPR_PATTERN);
+    if(m) {
+        // This is the expression block
+        let expr = m[2];
+        if(expr) {
+            return new ExprBlock(expr);
         }
     }
 

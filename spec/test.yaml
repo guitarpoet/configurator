@@ -1,0 +1,7 @@
+#include ./simple.yaml
+
+#ifenv TEST
+test: true
+#else
+no_test: true
+#endif

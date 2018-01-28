@@ -32,8 +32,8 @@ templates:
             #ifdef DEV
             hot-load: true
             #endif
-    login-based-api-template: # The Template for all API routes that needs login
-        based-on: *api-route
+    login-based-api-template: &login-based-api-template # The Template for all API routes that needs login
+        based-on: *api-template
         config:
             filters:
                 -

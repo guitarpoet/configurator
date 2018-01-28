@@ -21,6 +21,7 @@
     },
     "homepage": "https://github.com/guitarpoet/configurator#readme",
     "dependencies": {
-        "hot-pepper-jelly": "0.0.6"
+        "hot-pepper-jelly": "0.0.6",
+        "yamljs": "^0.3.0"
     }
 }
