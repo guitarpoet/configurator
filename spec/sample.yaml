@@ -29,7 +29,7 @@ templates:
         module: routing/api
         config:
             method: all # Support get, post and all
-            #ifdef DEV
+            #ifenv DEV
             hot-load: true
             #endif
     login-based-api-template: &login-based-api-template # The Template for all API routes that needs login
