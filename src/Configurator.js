@@ -14,10 +14,30 @@ const MacroEngine = require("./macro/MacroEngine");
 const FilterBase = require("./models/FilterBase");
 const fs = require("fs");
 const yaml = require("yamljs");
-const { isObject, isArray } = require("lodash");
+const { isFunction, isString, isObject, isArray, extend, get, set } = require("lodash");
 const { FilterObject } = FilterBase;
 const ALIAS_PATTERN = /^\~([a-zA-Z_\-]+)/;
 const COMPOSITE_PATTERN = /^\^([a-zA-Z_\-\/]+)/;
+const { inspect } = require('util')
+
+const overlay = (dest, src) => {
+    if(isObject(dest) && isObject(src)) {
+        let ret = {};
+        // We only process objects
+        for(let p in dest) {
+            // Let's overlay the value
+            ret[p] = overlay(dest[p], src[p]);
+        }
+
+        for(let p in src) {
+            // Let's overlay the value that is not in the dest
+            ret[p] = src[p];
+        }
+        return ret;
+    }
+    // Then, if the source has value, copy it, else use the default one
+    return src? src: dest;
+}
 
 /**
  * The filter that will load the file as the output
@@ -90,6 +110,45 @@ const processAlias = (data, aliases = null) => {
     }
 }
 
+const processBase = (data) => {
+    if(isObject(data)) {
+        // Let's check if the data itself needs to be overlayed
+        let { $base } = data;
+
+        if($base && isObject($base)) {
+            // Let's remove the base references
+            delete data["$base"];
+            
+            // Now overlay it and return it
+            data = overlay($base, data);
+        }
+
+        // This data is object, let's process its fields
+        for(let p in data) {
+            data[p] = processBase(data[p]);
+        }
+    }
+
+    if(isArray(data)) {
+        return data.map(processBase);
+    }
+
+    return data;
+}
+
+/**
+ * This is the filter object for including the base configurations
+ */
+class BaseFilter extends FilterObject {
+    constructor(name = "base-filter") {
+        super(name);
+    }
+
+    filter(data) {
+        return processBase(data);
+    }
+}
+
 /**
  * This is the filter that will replace the alias to the aliased name
  */
@@ -127,7 +186,7 @@ const processComposites = (data) => {
                         obj = v;
                         v = {};
                     }
-                    
+
                     data[name[0]] = obj;
                 }
             }
@@ -159,6 +218,71 @@ class CompositeFilter extends FilterObject {
     }
 }
 
+const processObject = (data, configurator) => {
+    if(isArray(data)) {
+        // If this is an array, let's process all values in it
+        return data.map(d => processObject(d, configurator));
+    }
+
+    if(isObject(data)) {
+        // This is an object, let's process its fields first
+        for(let p in data) {
+            let v = data[p];
+            if(isObject(v) || isArray(v)) {
+                // This value is already object or array, let's process it now
+                v = processObject(v, configurator);
+                data[p] = v;
+            }
+        }
+        // Let's check if this data needs to be update too
+        if(data.$type) {
+            // Yes, we have the type inforamtion here
+            switch(data.$type) {
+                case "module": // We only support module type for now
+                    let { $module, $name } = data;
+                    if(isString($module)) {
+                        // Only process that if the module information is string
+                        let m = configurator.require($module);
+                        if(m) {
+                            let func = m;
+                            if($name) {
+                                // Let's use the property instead
+                                func = m[$name];
+                            }
+                            if(func && isFunction(func)) {
+                                let obj = new func(data);
+                                if(obj instanceof ConfigObjectBase) {
+                                    // This is config object base, let's add the metadata to it too
+                                    obj.meta(configurator, configurator.require);
+                                }
+                                return obj;
+                            }
+                        }
+                    }
+                    return data;
+            }
+        }
+    }
+
+    // Return the data
+    return data;
+}
+
+/**
+ * This is the object filter that will turn the values into objects using the
+ * module require functions
+ */
+class ObjectFilter extends FilterObject {
+    constructor(configurator, name = "object-filter") {
+        super(name);
+        this.configurator = configurator;
+    }
+
+    filter(data) {
+        return processObject(data, this.configurator);
+    }
+}
+
 /**
  * This is filter will construct the result into JSON
  */
@@ -172,9 +296,69 @@ class JsonFilter extends FilterObject {
     }
 }
 
+/**
+ * The base class for the config object
+ */
+class ConfigObjectBase {
+
+    constructor(props = {}) {
+        extend(this, props);
+    }
+
+    /**
+     * This will set and get the metadata information
+     */
+    meta(configurator = null, require = null) {
+        this.$configurator = configurator;
+        this.$require = require;
+    }
+
+    get(path = null, defaultValue = null) {
+        if(path) {
+            return get(this, path, defaultValue);
+        }
+        return this;
+    }
+
+    set(path, value = null) {
+        set(this, path, value);
+    }
+
+    [inspect.custom]() {
+        let ret = {};
+        for(let p in this) {
+            if(["$require", "$configurator"].indexOf(p) === -1) {
+                ret[p] = this[p];
+            }
+        }
+        ret.constructor = this.constructor;
+        return ret;
+    }
+}
+
+
 class Configurator extends FilterBase {
-    constructor(resolver = null, filters = []) {
+    constructor(theRequire = null, filters = []) {
         super(filters);
+
+        if(theRequire) {
+            // We have the require passed in, so we can use the require of theirs
+            this.require = theRequire;
+            this.resolver = this.require.resolve;
+        } else {
+            // We don't have the require set, let's just use ours, mostly useless, :(
+            this.require = require;
+            this.resolver = path.resolve;
+        }
+
+        // Construct the basic macro engine
+        this.macro = MacroEngine.basic(this.resolver);
+
+        // Let's add the filters
+        this.processFilters();
+    }
+
+    processFilters() {
         // Let's add the Yaml parse filter to parse the result to the JavaScript Object
         this.unshift(new YamlFilter());
         // Let's add the macro filter
@@ -182,17 +366,14 @@ class Configurator extends FilterBase {
         // Let's add the read file filter to the top most
         this.unshift(new FileFilter(this));
 
+        // Let's process the base first
+        this.push(new BaseFilter());
         // Let's add the aliases filter
         this.push(new AliasFilter());
-
         // Let's add the composite filter
         this.push(new CompositeFilter());
-
-        // Use the resolver(which used to resolve the file path) from the constructor, if not set, will use path.resolve as default
-        this.resolver = resolver || path.resolve;
-
-        // Construct the basic macro engine
-        this.macro = MacroEngine.basic(resolver);
+        // Let's add the object filter now
+        this.push(new ObjectFilter(this));
     }
 
     /**
@@ -216,5 +397,8 @@ class Configurator extends FilterBase {
         });
     }
 }
+
+Configurator.ConfigObjectBase = ConfigObjectBase;
+Configurator.overlay = overlay;
 
 module.exports = Configurator;

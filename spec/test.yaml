@@ -5,3 +5,36 @@ test: true
 #else
 no_test: true
 #endif
+
+templates: # The templates that will be used
+    simple: &simple
+        $type: module # This is the syntax for the hint of this object
+        $module: ./Sample.js # The module to be require, if no name specified, will use the default one
+    another: &another
+        $type: module
+        $module: ./Sample.js
+        $name: AnotherConfigTest 
+
+obj:
+    $base: *simple
+    a: 1
+    b: 2
+arr:
+    -
+        $base: *simple
+        c: 1
+        d: 2
+
+    -
+        $base: *simple
+        f: 1
+        g: 2
+        h:
+            $base: *simple
+            i: 1
+            j: 2
+        k:
+            $base: *another
+            l: 1
+            m: 2
+

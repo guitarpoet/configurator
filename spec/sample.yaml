@@ -20,6 +20,7 @@ routes: # This is the root for all the routes
 
     /api:
         type: express # This express type of routing will provide a router object to handle the routing
+        ^config/routes: 1
         ~routes-config:
             /config:
                 based-on: *api-template
