@@ -1,5 +1,5 @@
 {
-    "name": "configurator",
+    "name": "@guitarpoet/configurator",
     "version": "0.0.1",
     "description": "The ultimate configuration framework",
     "main": "src/index.js",
