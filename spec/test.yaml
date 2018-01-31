@@ -8,8 +8,11 @@ no_test: true
 
 templates: # The templates that will be used
     simple: &simple
-        $type: module # This is the syntax for the hint of this object
         $module: ./Sample.js # The module to be require, if no name specified, will use the default one
+        $type: module # This is the syntax for the hint of this object
+    test: &test
+        $type: module
+        $module: ./test.js
     another: &another
         $type: module
         $module: ./Sample.js
@@ -31,10 +34,15 @@ arr:
         g: 2
         h:
             $base: *simple
+            $name: AnotherConfigTest
             i: 1
             j: 2
         k:
             $base: *another
             l: 1
             m: 2
-
+        n:
+            $base: *test
+            $name: Hello
+            o: 1
+            p: 2

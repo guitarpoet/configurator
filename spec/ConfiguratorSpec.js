@@ -61,6 +61,7 @@ describe("Configurator", function() {
             expect(r instanceof Configurator.ConfigObjectBase).toBeTruthy();
             expect(get(data, "arr[1].h.i")).toBe(1);
             expect(get(data, "arr[1].k.another")).toBe(1);
+            expect(get(data, "arr[1].n.o")).toBe(1);
         }).catch(console.error);
     });
 });
