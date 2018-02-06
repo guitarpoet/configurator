@@ -1,0 +1,47 @@
+################################################################################
+#
+# This is the conifguration file for the command line test
+#
+# @author Jack <jack@thinkingcloud.info>
+# @version 0.0.1
+# @date Mon Feb  5 17:33:06 2018
+#
+################################################################################
+
+#===============================================================================
+#
+# Section Commandline Configuration
+#
+#===============================================================================
+
+# Let's include the settings from the package.json into this one
+
+#json ../package.json
+
+app:
+    $type: module
+    $name: MyApp # This is the app configuration
+    metadata:
+        version: $(version)
+        addHelp: true
+        description: $(description)
+    commands:
+        - start
+        - stop
+        - restart
+    options:
+        -
+            option: [-a, --option-a]
+            help: |
+                The option value for a
+            defaultValue: a
+        -
+            option: [-b, --option-b]
+            help: |
+                The option value for b
+            defaultValue: b
+        -
+            option: [-c, --command]
+            help: |
+                The command to run
+            defaultValue: test

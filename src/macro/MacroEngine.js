@@ -8,7 +8,7 @@
  */
 
 const FilterBase = require("../models/FilterBase");
-const { flatten, isString, isArray } = require("lodash");
+const { flatten, isString, isArray, get } = require("lodash");
 const { FilterObject } = FilterBase;
 const fs = require("fs");
 const path = require("path");
@@ -27,6 +27,8 @@ const DEFINE_PATTERN = /^([ \t])*#define ([a-z\\.A-Z_]+)( (.+))?/;
 const UNDEFINE_PATTERN = /^([ \t])*#undefine ([a-z\\.A-Z_]+)/;
 const INCLUDE_PATTERN = /^([ \t])*#include ([a-zA-Z0-9\\._\/]+)/;
 const EXPR_PATTERN = /^([ \t])*#expr (.+)$/;
+const PLACE_HOLDER_PATTERN = /\$\([a-zA-Z0-9\\._]+\)/g;
+const JSON_PATTERN = /([ \t])*#json ([a-zA-Z0-9\\._\/]+)$/; // Yes, sorry, we don't support blank in the file name
 
 const evaluate = (expr) => (eval(`(${expr})`))
 
@@ -182,6 +184,59 @@ class IfDefBlock extends IfBlock {
 class IfEnvBlock extends IfBlock {
     constructor(variable) {
         super(`typeof process.env.${variable} !== "undefined"`);
+    }
+}
+
+const replace = (str, search, replacemen) => {
+    return str.split(search).join(replacemen);
+}
+
+/**
+ * This filter will check for #json and include that json as a placeholder configuration
+ * and replace all values in $() to the value
+ */
+class JsonFilter extends TextFilterBase {
+    constructor(name, $require) {
+        super(name);
+        this.$require = $require;
+    }
+
+    filter(text = []) {
+        let json = null;
+        let ret = [];
+        for(let t of text) {
+            let m = t.match(JSON_PATTERN);
+            if(m) {
+                // Yes, it is json definition, let's parse it
+                let name = m[2];
+                json = this.$require(name);
+            } else {
+                if(json) {
+                    m = t.match(PLACE_HOLDER_PATTERN);
+                    if(m) {
+                        // Yes, it appears that the line is matching the place holder, let's calculate the place holders
+                        let hash = {};
+                        for(let d of m) {
+                            // Let's remove the $( and ) from the name
+                            let n = d.substr(2, d.length - 3);
+                            hash[d] = get(json, n);
+                        }
+
+                        // We have calculated the value, let's replace it with place holder
+                        for(let p in hash) {
+                            let v = hash[p];
+                            if(isArray(v)) {
+                                // Only a simple array support
+                                v = "[" + v.join(",") + "]";
+                            }
+                            t = replace(t, p, v);
+                        }
+                    }
+                }
+                ret.push(t);
+            }
+        }
+        return ret;
     }
 }
 
@@ -445,6 +500,13 @@ MacroEngine.basicFilters = (resolver = null) => ([
     new CoreFilter("core-filter")
 ])
 
+MacroEngine.simpleFilters = (require = null) => ([
+    new IncludeFilter("include-filter", require.resolve),
+    new CoreFilter("core-filter"),
+    new JsonFilter("json-filter", require)
+])
+
 MacroEngine.basic = (resolver) => new MacroEngine(MacroEngine.basicFilters(resolver));
+MacroEngine.simple = (require) => new MacroEngine(MacroEngine.simpleFilters(require));
 
 module.exports = MacroEngine

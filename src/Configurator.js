@@ -19,6 +19,8 @@ const { FilterObject } = FilterBase;
 const ALIAS_PATTERN = /^\~([a-zA-Z_\-]+)/;
 const COMPOSITE_PATTERN = /^\^([a-zA-Z_\-\/]+)/;
 const { inspect } = require('util')
+const ConfigObjectBase = require("./models/ConfigObjectBase");
+const { AppBase, App } = require("./models/AppBase");
 
 const overlay = (dest, src) => {
     if(isObject(dest) && isObject(src)) {
@@ -118,7 +120,7 @@ const processBase = (data) => {
         if($base && isObject($base)) {
             // Let's remove the base references
             delete data["$base"];
-            
+
             // Now overlay it and return it
             data = overlay($base, data);
         }
@@ -218,6 +220,26 @@ class CompositeFilter extends FilterObject {
     }
 }
 
+const constructObj = (module, name, data, configurator) => {
+    let m = module;
+    if(m) {
+        let $name = name;
+        let func = m;
+        if($name) {
+            // Let's use the property instead
+            func = m[$name];
+        }
+        if(func && isFunction(func)) {
+            let obj = new func(data);
+            if(obj instanceof ConfigObjectBase) {
+                // This is config object base, let's add the metadata to it too
+                obj.meta(configurator, configurator.require);
+            }
+            return obj;
+        }
+    }
+}
+
 const processObject = (data, configurator) => {
     if(isArray(data)) {
         // If this is an array, let's process all values in it
@@ -240,24 +262,18 @@ const processObject = (data, configurator) => {
             switch(data.$type) {
                 case "module": // We only support module type for now
                     let { $module, $name } = data;
+                    let m = null;
                     if(isString($module)) {
-                        // Only process that if the module information is string
-                        let m = configurator.require($module);
-                        if(m) {
-                            let func = m;
-                            if($name) {
-                                // Let's use the property instead
-                                func = m[$name];
-                            }
-                            if(func && isFunction(func)) {
-                                let obj = new func(data);
-                                if(obj instanceof ConfigObjectBase) {
-                                    // This is config object base, let's add the metadata to it too
-                                    obj.meta(configurator, configurator.require);
-                                }
-                                return obj;
-                            }
-                        }
+                        m = configurator.require($module);
+                    } else {
+                        // No module set, let's try it ourself
+                        m = all;
+                    }
+
+                    // Only process that if the module information is string
+                    let obj = constructObj(m, $name, data, configurator);
+                    if(obj) {
+                        return obj;
                     }
                     return data;
             }
@@ -296,47 +312,6 @@ class JsonFilter extends FilterObject {
     }
 }
 
-/**
- * The base class for the config object
- */
-class ConfigObjectBase {
-
-    constructor(props = {}) {
-        extend(this, props);
-    }
-
-    /**
-     * This will set and get the metadata information
-     */
-    meta(configurator = null, require = null) {
-        this.$configurator = configurator;
-        this.$require = require;
-    }
-
-    get(path = null, defaultValue = null) {
-        if(path) {
-            return get(this, path, defaultValue);
-        }
-        return this;
-    }
-
-    set(path, value = null) {
-        set(this, path, value);
-    }
-
-    [inspect.custom]() {
-        let ret = {};
-        for(let p in this) {
-            if(["$require", "$configurator"].indexOf(p) === -1) {
-                ret[p] = this[p];
-            }
-        }
-        ret.constructor = this.constructor;
-        return ret;
-    }
-}
-
-
 class Configurator extends FilterBase {
     constructor(theRequire = null, filters = []) {
         super(filters);
@@ -352,7 +327,7 @@ class Configurator extends FilterBase {
         }
 
         // Construct the basic macro engine
-        this.macro = MacroEngine.basic(this.resolver);
+        this.macro = MacroEngine.simple(this.require);
 
         // Let's add the filters
         this.processFilters();
@@ -398,7 +373,11 @@ class Configurator extends FilterBase {
     }
 }
 
-Configurator.ConfigObjectBase = ConfigObjectBase;
-Configurator.overlay = overlay;
+let all = extend(Configurator, {
+    ConfigObjectBase,
+    AppBase,
+    App,
+    overlay
+});
 
-module.exports = Configurator;
+module.exports = all;
