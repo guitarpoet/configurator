@@ -10,7 +10,7 @@
 const FilterBase = require("./models/FilterBase");
 const MacroEngine = require("./macro/MacroEngine");
 const Configurator = require("./Configurator");
-const { extend } = require("lodash");
+const { extend, isArray, isObject } = require("lodash");
 const { pipe } = require("hot-pepper-jelly");
 
 const config = (require) => {
@@ -21,7 +21,11 @@ const config = (require) => {
 }
 
 const get_app = (data) => {
-    return data.app;
+	let { app } = data;
+	if(app) {
+		app.$config = data;
+	}
+	return app || {};
 }
 
 const init_app = (app) => {
@@ -40,18 +44,47 @@ const handle_app_error = (error) => {
 	console.error("Getting error", error);
 }
 
-const normal_start = (require, obj, error_handler = null) => {
+const normal_start = (require, obj, appConfig = "./app.yaml", filters = null, error_handler = null) => {
 	error_handler = error_handler || handle_app_error;
-	pipe("./app.yaml")([config(require), get_app, init_app, wrap_app_with(obj)])
+	// This is the default filters
+	let defaultFilters = [config(require), get_app, init_app, wrap_app_with(obj)];
+	if(filters) {
+		// We get filters settings
+		let before = null;
+		let after = null;
+
+		if(isObject(filters)) {
+			before = filters.before;
+			after = filters.after;
+		}
+
+		if(isArray(filters)) {
+			// Only after
+			after = filters;
+		}
+
+		if(before) {
+			filters = before.concat(defaultFilters);
+		} else {
+			filters = defaultFilters;
+		}
+
+		if(after) {
+			filters = filters.concat(after);
+		}
+	} else {
+		filters = defaultFilters;
+	}
+	pipe(appConfig)(filters)
 		.then(start_app).catch(handle_app_error);
 }
 
-const custom_start = (require, classes, error_handler = null) => {
+const custom_start = (require, classes, appConfig = "./app.yaml", filters = null, error_handler = null) => {
 	// Extend the configurator using the App classes
 	extend(Configurator, classes);
 
 	error_handler = error_handler || handle_app_error;
-	pipe("./app.yaml")([config(require), get_app, init_app])
+	pipe(appConfig)([config(require), get_app, init_app])
 		.then(start_app).catch(handle_app_error);
 }
 

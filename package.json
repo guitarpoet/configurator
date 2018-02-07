@@ -23,6 +23,7 @@
     "dependencies": {
         "argparse": "^1.0.9",
         "hot-pepper-jelly": "0.0.7",
+        "log4js": "^2.5.2",
         "yamljs": "^0.3.0"
     }
 }

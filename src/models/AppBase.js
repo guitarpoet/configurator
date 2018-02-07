@@ -8,7 +8,7 @@
 
 const ConfigObjectBase = require("./ConfigObjectBase");
 const { ArgumentParser } = require("argparse");
-const { extend, isFunction } = require("lodash");
+const { get, extend, isFunction } = require("lodash");
 const { pipe, debug, log } = require("hot-pepper-jelly");
 
 const buildParser = (app) => {
@@ -32,6 +32,13 @@ class AppBase extends ConfigObjectBase {
         return pipe(this)(filters);
     }
 
+    config(path = null, defaultValue = null) {
+        if(!path) {
+            return this.$config;
+        }
+        return this.$config? get(this.$config, path, defaultValue): defaultValue;
+    }
+
     /**
      * Wrap object to this, just copy all methods into this
      */
@@ -43,11 +50,8 @@ class AppBase extends ConfigObjectBase {
     start() {
         if(this.args && this.args.command) {
             // OK, we get the command, let's check if the command exists;
-            debug("Check if command [{{command}}] exists...", this.args);
-            
             let func = this[this.args.command];
             if(func && isFunction(func)) {
-                debug("Trying to call command function [{{command}}]", this.args);
                 func.apply(this);
                 return;
             }

@@ -20,6 +20,7 @@ const ALIAS_PATTERN = /^\~([a-zA-Z_\-]+)/;
 const COMPOSITE_PATTERN = /^\^([a-zA-Z_\-\/]+)/;
 const { inspect } = require('util')
 const ConfigObjectBase = require("./models/ConfigObjectBase");
+const LogConfig = require("./models/LogConfig");
 const { AppBase, App } = require("./models/AppBase");
 
 const overlay = (dest, src) => {
@@ -377,6 +378,7 @@ let all = extend(Configurator, {
     ConfigObjectBase,
     AppBase,
     App,
+    LogConfig,
     overlay
 });
 
