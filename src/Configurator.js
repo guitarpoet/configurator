@@ -15,6 +15,7 @@ const FilterBase = require("./models/FilterBase");
 const fs = require("fs");
 const yaml = require("yamljs");
 const { isFunction, isString, isObject, isArray, extend, get, set } = require("lodash");
+const { load } = require("hot-pepper-jelly");
 const { FilterObject } = FilterBase;
 const ALIAS_PATTERN = /^\~([a-zA-Z_\-]+)/;
 const COMPOSITE_PATTERN = /^\^([a-zA-Z_\-\/]+)/;
@@ -22,6 +23,7 @@ const { inspect } = require('util')
 const ConfigObjectBase = require("./models/ConfigObjectBase");
 const LogConfig = require("./models/LogConfig");
 const { AppBase, App } = require("./models/AppBase");
+const { debug, global_registry, enable_features } = require("hot-pepper-jelly");
 
 const overlay = (dest, src) => {
     if(isObject(dest) && isObject(src)) {
@@ -119,15 +121,15 @@ const processBase = (data) => {
         let { $base } = data;
 
         if($base && isObject($base)) {
-            // Let's remove the base references
-            delete data["$base"];
-
             // Now overlay it and return it
-            data = overlay($base, data);
+            data = overlay(processBase($base), data);
         }
 
         // This data is object, let's process its fields
         for(let p in data) {
+            if(p == "$base") {
+                continue;
+            }
             data[p] = processBase(data[p]);
         }
     }
@@ -260,21 +262,30 @@ const processObject = (data, configurator) => {
         // Let's check if this data needs to be update too
         if(data.$type) {
             // Yes, we have the type inforamtion here
-            switch(data.$type) {
-                case "module": // We only support module type for now
-                    let { $module, $name } = data;
-                    let m = null;
-                    if(isString($module)) {
-                        m = configurator.require($module);
-                    } else {
-                        // No module set, let's try it ourself
-                        m = all;
-                    }
+            let { $module, $name } = data;
+            let m = null;
+            if(isString($module)) {
+                m = configurator.require($module);
+            } else {
+                // No module set, let's try it ourself
+                m = all;
+            }
 
+            switch(data.$type) {
+                case "module": // It is a module
                     // Only process that if the module information is string
                     let obj = constructObj(m, $name, data, configurator);
                     if(obj) {
                         return obj;
+                    }
+                    return data;
+                case "function": // It is an function
+                    // Only process that if the module information is string
+                    let func = m[$name];
+                    if(func) {
+                        // Copy the values to the function
+                        func = extend(func, data);
+                        return func;
                     }
                     return data;
             }
@@ -374,10 +385,32 @@ class Configurator extends FilterBase {
     }
 }
 
+class Enable extends ConfigObjectBase {
+    _init() {
+        let { features } = this;
+        if(features) {
+            if(isArray(features)) {
+                let t = {};
+                for(let f of features) {
+                    t[f] = true
+                }
+                features = t;
+            }
+
+            if(isObject(features)) {
+                // Only process object features
+                enable_features(features);
+            }
+        }
+    }
+}
+
 let all = extend(Configurator, {
     ConfigObjectBase,
     AppBase,
     App,
+    BaseFilter,
+    Enable,
     LogConfig,
     overlay
 });

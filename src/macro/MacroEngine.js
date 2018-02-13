@@ -8,10 +8,11 @@
  */
 
 const FilterBase = require("../models/FilterBase");
-const { flatten, isString, isArray, get } = require("lodash");
+const { flatten, isArray, get, isString } = require("lodash");
 const { FilterObject } = FilterBase;
 const fs = require("fs");
 const path = require("path");
+const { enable_features } = require("hot-pepper-jelly");
 
 /**
  * The const values
@@ -29,6 +30,7 @@ const INCLUDE_PATTERN = /^([ \t])*#include ([a-zA-Z0-9\\._\/]+)/;
 const EXPR_PATTERN = /^([ \t])*#expr (.+)$/;
 const PLACE_HOLDER_PATTERN = /\$\([a-zA-Z0-9\\._]+\)/g;
 const JSON_PATTERN = /([ \t])*#json ([a-zA-Z0-9\\._\/]+)$/; // Yes, sorry, we don't support blank in the file name
+const ENABLE_PATTERN = /^([ \t])*#enable (([a-z\\.A-Z_]+)([ \t]*,[ \t]*[a-z\\.A-Z_]+)*)$/;
 
 const evaluate = (expr) => (eval(`(${expr})`))
 
@@ -91,6 +93,24 @@ class Block {
      * Let the block process the value of its own
      */
     process() {
+    }
+}
+
+class EnableBlock extends Block {
+    constructor(features) {
+        super();
+        this.features = features;
+    }
+
+    process() {
+        let { features } = this;
+        if(features && isString(features)) {
+            let f = {};
+            features.split(",").map(s => {
+                f[s.trim()] = true;
+            });
+            enable_features(f);
+        }
     }
 }
 
@@ -274,6 +294,14 @@ const handleDefine = (t) => {
         // OK, let's set the value to the process.env only
         if(name) {
             return new DefineBlock(name, value);
+        }
+    }
+
+    m = t.match(ENABLE_PATTERN);
+    if(m) {
+        let features = m[2];
+        if(features) {
+            return new EnableBlock(features);
         }
     }
 
