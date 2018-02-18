@@ -234,9 +234,14 @@ const constructObj = (module, name, data, configurator) => {
         }
         if(func && isFunction(func)) {
             let obj = new func(data);
-            if(obj instanceof ConfigObjectBase) {
+            if(obj.meta && isFunction(obj.meta)) {
                 // This is config object base, let's add the metadata to it too
                 obj.meta(configurator, configurator.require);
+            }
+
+            if(obj._init && isFunction(obj._init)) {
+                // Call the init function if we should
+                obj._init();
             }
             return obj;
         }

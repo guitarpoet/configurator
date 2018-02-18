@@ -14,10 +14,6 @@ class ConfigObjectBase {
 
     constructor(props = {}) {
         extend(this, props);
-        if(this._init && isFunction(this._init)) {
-            // Call the init function if there is one
-            this._init();
-        }
     }
 
     /**
