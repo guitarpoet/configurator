@@ -1,5 +1,5 @@
 const ConfigTest = require("./Sample.js");
-const { get } = require("lodash");
+const { get, isRegExp } = require("lodash");
 const { feature_enabled, enabled_features } = require("hot-pepper-jelly");
 
 describe("Configurator", function() {
@@ -10,7 +10,6 @@ describe("Configurator", function() {
         c.process("./test.yaml").then(data => {
             expect(data.no_test).toBeTruthy();
             expect(feature_enabled("hello")).toBeTruthy();
-            console.info(enabled_features());
         }).catch(console.error);
     });
     it("Simple Load Test", function() {
@@ -25,7 +24,13 @@ describe("Configurator", function() {
         process.env.DEV = true;
         let c = new Configurator(require);
 
-        c.process("./sample.yaml").then(data => expect(data).toBeTruthy()).catch(console.error);
+        c.process("./sample.yaml").then(data =>  {
+            expect(data).toBeTruthy();
+            expect(isRegExp(data.regex)).toBeTruthy();
+            expect("a.jsx".match(data.regex)).toBeTruthy();
+            expect("aajsx".match(data.regex)).toBeFalsy();
+            expect(get(data, "arr.test[0].a.b.c")).toEqual(1);
+        }).catch(console.error);
     });
 
     it("Overlay test", function() {

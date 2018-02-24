@@ -12,6 +12,11 @@
 #
 ################################################################################
 
+@regex: \.js(x)?$
+^arr/test:
+    -
+        ^a/b/c: 1
+        ^d/e/f: 2
 routes: # This is the root for all the routes
     /:
         type: redirect # The redirect type is different with alias type, alias means it will use the same routing of that route, the redirect means it will redirect to that route anyway

@@ -12,7 +12,7 @@ const { flatten, isArray, get, isString } = require("lodash");
 const { FilterObject } = FilterBase;
 const fs = require("fs");
 const path = require("path");
-const { enable_features } = require("hot-pepper-jelly");
+const { enable_features, global_registry } = require("hot-pepper-jelly");
 
 /**
  * The const values
@@ -231,9 +231,16 @@ class JsonFilter extends TextFilterBase {
                 let name = m[2];
                 json = this.$require(name);
             } else {
-                if(json) {
-                    m = t.match(PLACE_HOLDER_PATTERN);
-                    if(m) {
+                m = t.match(PLACE_HOLDER_PATTERN);
+                if(m) {
+                    // We don't have json here, let's check if it is __file and __dir
+                    let f = global_registry("macro-file");
+                    if(f) {
+                        t = replace(t, "$(__file)", f);
+                        t = replace(t, "$(__dir)", path.dirname(f));
+                    }
+
+                    if(json) {
                         // Yes, it appears that the line is matching the place holder, let's calculate the place holders
                         let hash = {};
                         for(let d of m) {

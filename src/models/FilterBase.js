@@ -13,10 +13,6 @@ const { isArray, isFunction } = require("lodash");
  */
 class FilterObject {
     constructor(name = null) {
-        if(name) {
-            debug("Constructing filter {{name}}", {name});
-        }
-
         // This will add the name to the filter object
         this.name = name;
     }

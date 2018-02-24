@@ -174,6 +174,11 @@ const processComposites = (data) => {
         // Data is object, let's process it
         for(let p in data) {
             let v = data[p];
+            if(isObject(v) || isArray(v)) {
+                // Let's process the alias in the inner object or array
+                processComposites(v);
+            }
+
             let m = p.match(COMPOSITE_PATTERN);
             if(m) {
                 // p is an composite, let's process it
@@ -194,10 +199,6 @@ const processComposites = (data) => {
 
                     data[name[0]] = obj;
                 }
-            }
-            if(isObject(v) || isArray(v)) {
-                // Let's process the alias in the inner object or array
-                processComposites(v);
             }
         }
     }
@@ -258,10 +259,17 @@ const processObject = (data, configurator) => {
         // This is an object, let's process its fields first
         for(let p in data) {
             let v = data[p];
-            if(isObject(v) || isArray(v)) {
-                // This value is already object or array, let's process it now
-                v = processObject(v, configurator);
-                data[p] = v;
+            if(p.indexOf("@") === 0 && isString(v)) {
+                // OK, we are facing the regex, and remove the @ at the begining
+                data[p.substring(1)] = new RegExp(v);
+                // Let's remove the old one
+                delete data[p];
+            } else {
+                if(isObject(v) || isArray(v)) {
+                    // This value is already object or array, let's process it now
+                    v = processObject(v, configurator);
+                    data[p] = v;
+                }
             }
         }
         // Let's check if this data needs to be update too
@@ -381,6 +389,8 @@ class Configurator extends FilterBase {
             // Let's get the name first
             name = this.resolver(name);
             if(fs.existsSync(name)) {
+                global_registry("macro-file", name);
+                global_registry("config-file", name);
                 // This file is really there
                 resolve(fs.readFileSync(name));
             } else {

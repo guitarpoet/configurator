@@ -9,7 +9,7 @@
 
 const FilterBase = require("./models/FilterBase");
 const MacroEngine = require("./macro/MacroEngine");
-const { load, pipe } = require("hot-pepper-jelly");
+const { load, pipe, getModule } = require("hot-pepper-jelly");
 const Configurator = require("./Configurator");
 const { extend, isArray, isObject } = require("lodash");
 const Module = require("module");
@@ -110,6 +110,20 @@ const configure = (filters, configFile = "./config.yaml") => {
     return pipe(configFile)(filters);
 }
 
+const moduleConfig = (r) => {
+    let m = getModule(r);
+    if(m) {
+        const r = (request) => {
+            return Module._load(request, m, false);
+        };
+        r.resolve = (request, options) => {
+            return Module._resolveFilename(request, m, false, options);
+        }
+        return config(r);
+    }
+    return null;
+}
+
 extend(Configurator, {
     FilterBase,
     MacroEngine,
@@ -121,7 +135,8 @@ extend(Configurator, {
     handle_app_error,
     normal_start,
     custom_start,
-    configure
+    configure,
+    moduleConfig
 });
 
 module.exports = Configurator;
