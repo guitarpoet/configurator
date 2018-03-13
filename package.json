@@ -22,7 +22,7 @@
     "homepage": "https://github.com/guitarpoet/configurator#readme",
     "dependencies": {
         "argparse": "^1.0.9",
-        "hot-pepper-jelly": "1.0.4",
+        "hot-pepper-jelly": "^1.0.0",
         "log4js": "^2.5.2",
         "yamljs": "^0.3.0"
     }
