@@ -23,7 +23,7 @@ const { inspect } = require('util')
 const ConfigObjectBase = require("./models/ConfigObjectBase");
 const LogConfig = require("./models/LogConfig");
 const { AppBase, App } = require("./models/AppBase");
-const { debug, global_registry, enable_features } = require("hot-pepper-jelly");
+const { log, debug, global_registry, enable_features } = require("hot-pepper-jelly");
 
 const overlay = (dest, src) => {
     if(isObject(dest) && isObject(src)) {
@@ -75,7 +75,12 @@ class YamlFilter extends FilterObject {
     }
 
     filter(data) {
-        return yaml.parse(data);
+        // Let's add the file location into the yaml object's meta
+        let f = global_registry("macro-file");
+        let ret = yaml.parse(data);
+        ret["__file"] = f;
+        ret["__dir"] = path.dirname(f);
+        return ret;
     }
 }
 
@@ -278,7 +283,16 @@ const processObject = (data, configurator) => {
             let { $module, $name } = data;
             let m = null;
             if(isString($module)) {
-                m = configurator.require($module);
+                try {
+                    // Let's check if we can really require the module first
+                    m = configurator.require($module);
+                } catch(e) {
+                    debug("Getting error {{{e.message}}} when trying to require module {{module}}", {
+                        e, module: $module
+                    });
+                    // We can't require this module, let's just return the data without processing it
+                    return data;
+                }
             } else {
                 // No module set, let's try it ourself
                 m = all;
