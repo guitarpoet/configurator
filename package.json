@@ -1,6 +1,6 @@
 {
     "name": "@guitarpoet/configurator",
-    "version": "0.0.6",
+    "version": "1.0.0",
     "description": "The ultimate configuration framework",
     "main": "src/index.js",
     "scripts": {
@@ -21,9 +21,9 @@
     },
     "homepage": "https://github.com/guitarpoet/configurator#readme",
     "dependencies": {
-        "argparse": "^1.0.9",
+        "argparse": "^1.0.10",
         "hot-pepper-jelly": "^1.0.0",
-        "log4js": "^2.5.2",
+        "log4js": "^2.5.3",
         "yamljs": "^0.3.0"
     }
 }

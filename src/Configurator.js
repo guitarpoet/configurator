@@ -239,6 +239,12 @@ const constructObj = (module, name, data, configurator) => {
             func = m[$name];
         }
         if(func && isFunction(func)) {
+            // Let's add the clean support for the data, so that you can remove the meta informations that you don't want
+            if(data.$clean && isArray(data.$clean)) {
+                for(let name of data.$clean) {
+                    delete data[name];
+                }
+            }
             let obj = new func(data);
             if(obj.meta && isFunction(obj.meta)) {
                 // This is config object base, let's add the metadata to it too
